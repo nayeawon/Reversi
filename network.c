@@ -1,8 +1,13 @@
+#include <stdio.h>
+#include <stdlib.h> 
+#include <unistd.h> 
+#include <string.h>
 #include <sys/socket.h> 
 #include <sys/types.h>
 #include <netinet/in.h> 
 #include <netinet/tcp.h>
 #include <linux/socket.h>
+#include "game.h"
 
 int serv_init(char * port)
 {
@@ -21,7 +26,7 @@ int serv_init(char * port)
 	bzero(&address, sizeof(address)) ; 	
 	address.sin_family = AF_INET; 
 	address.sin_addr.s_addr = INADDR_ANY /* localhost */ ; 
-	address.sin_port = htons(portnum); 
+	address.sin_port = htons(port); 
 
 	if (bind(sock_fd, (struct sockaddr *)&address, sizeof(address)) < 0) {
 		perror("bind failed: "); 
@@ -44,7 +49,16 @@ int serv_init(char * port)
 
 void serv_play(int conn_fd)
 {
-    // ToDo: implement here
+    /* initialize board */
+    int board[8][8] ;
+    for (int i = 0; i<8; i++) {
+        for (int j = 0; j<8; j++) {
+            board[i][j] = -1 ;
+        }
+    }
+    
+    board[3][4] = WHITE ; board[4][3] = WHITE ; /* white */
+    board[3][3] = BLACK ; board[4][4] = BLACK ; /* black */
     char buf[256] ;
 
 	do {
@@ -107,6 +121,17 @@ int clnt_init(const char * ip, int port)
 
 void clnt_play(int conn_fd)
 {
+    /* initialize board */
+    int board[8][8] ;
+    for (int i = 0; i<8; i++) {
+        for (int j = 0; j<8; j++) {
+            board[i][j] = -1 ;
+        }
+    }
+    
+    board[3][4] = WHITE ; board[4][3] = WHITE ; /* white */
+    board[3][3] = BLACK ; board[4][4] = BLACK ; /* black */
+
     char buf[256] ;
 
 	do {
@@ -129,9 +154,9 @@ void clnt_play(int conn_fd)
 
 void clnt_main(char * ip, char * port) 
 {
-    int conn_fd = clnt_init(argv[1], atoi(argv[2])) ;
+    int conn_fd = clnt_init(ip, atoi(port)) ;
 	
-	chat(conn_fd) ;
+	clnt_play(conn_fd) ;
 
 	shutdown(conn_fd, SHUT_RDWR) ;
 
