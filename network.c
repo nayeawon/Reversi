@@ -60,6 +60,8 @@ void serv_play(int conn_fd)
     keypad(stdscr, TRUE) ;    
     curs_set(2) ;
 
+    int pass = 0 ;
+
 	do {
         clear();
 		int s ;
@@ -68,6 +70,10 @@ void serv_play(int conn_fd)
 			break ;
 
 		buf[s] = '\0' ;
+        if (strcmp(buf, "pass") == 0 && pass) {
+            mvprintw(17, 0, "Game over\n") ;
+            break ;
+        }
         to_board(buf, board) ;
         display(board) ; /* print board */
         Coordinate * pos[64] ;
@@ -77,7 +83,12 @@ void serv_play(int conn_fd)
         getyx(stdscr, y, x) ; /* get cursor location */
         clear() ;
         Coordinate * verified_input = verify(board, pos, y, x) ; /* verify input */
-        if (verified_input == 0x0) printf("invalid input\n") ;
+        if (verified_input == 0x0) {
+            pass = 1 ;
+            strcpy(buf, "pass") ;
+            send(conn_fd, buf, strlen(buf), 0) ;
+            continue ;
+        }
 		int old_board[8][8] ;
         copy_board(old_board, board) ;
         int (* ptr)[8] = board ;
@@ -93,6 +104,26 @@ void serv_play(int conn_fd)
         napms(1000) ;
 		send(conn_fd, buf, strlen(buf), 0) ;
 	} while (strcmp(buf, "quit()") != 0) ;
+
+    int white = 0 ;
+    int black = 0 ;
+    for (int i = 0 ; i < 8 ; i++) {
+        for (int j = 0 ; j < 8 ; j++) {
+            if (board[i][j] == 0)
+                black++ ;
+            else if (board[i][j] == 1)
+                white++ ;
+        }
+    }
+
+    if (white > black)
+        mvprintw(17, 0, "White wins!\n") ;
+    else if (white < black)
+        mvprintw(17, 0, "Black wins!\n") ;
+    else
+        mvprintw(17, 0, "Draw!\n") ;
+    
+    endwin() ;
 }
 
 void serv_main(char * port) 
@@ -151,6 +182,7 @@ void clnt_play(int conn_fd)
     curs_set(2) ;
 
     char buf[256] ;
+    int pass = 0 ;
 
 	do {
         clear() ; //?
@@ -162,7 +194,12 @@ void clnt_play(int conn_fd)
         getyx(stdscr, y, x) ; /* get cursor location */
         clear() ;
         Coordinate * verified_input = verify(board, pos, y, x) ; /* verify input */
-        if (verified_input == 0x0) printf("invalid input\n") ;
+        if (verified_input == 0x0) {
+            pass = 1 ;
+            strcpy(buf, "pass") ;
+            send(conn_fd, buf, strlen(buf), 0) ;
+            continue ;
+        }
         int old_board[8][8] ;
         copy_board(old_board, board) ;
         int (* ptr)[8] = board ;
@@ -187,8 +224,33 @@ void clnt_play(int conn_fd)
 		if (s == -1)
 			break ;
 		buf[s] = '\0' ;
+        if (strcmp(buf, "pass") == 0 && pass) {
+            mvprintw(17, 0, "Game over\n") ;
+            break ;
+        }
         to_board(buf, board) ;
 	} while (strcmp(buf, "quit()") != 0) ;
+
+    int white = 0 ;
+    int black = 0 ;
+    for (int i = 0 ; i < 8 ; i++) {
+        for (int j = 0 ; j < 8 ; j++) {
+            if (board[i][j] == 0)
+                black++ ;
+            else if (board[i][j] == 1)
+                white++ ;
+        }
+    }
+
+    if (white > black)
+        mvprintw(17, 0, "White wins!\n") ;
+    else if (white < black)
+        mvprintw(17, 0, "Black wins!\n") ;
+    else
+        mvprintw(17, 0, "Draw!\n") ;
+
+    send(conn_fd, "pass", strlen("pass"), 0) ;
+    endwin() ;
 }
 
 void clnt_main(char * ip, char * port) 
